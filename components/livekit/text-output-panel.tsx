@@ -35,6 +35,7 @@ export const TextOutputPanel: React.FC<TextOutputPanelProps> = ({
   const { mainContent = '', webSources = [], youtubeVideos = [] } = parsed || {};
 
   // Format main content with better structure for diagnostic reports
+  // Format main content with better structure for diagnostic reports
   const formatMainContent = (content: string, hasStructuredVideos: boolean = false) => {
     // Content should already be properly decoded from backend, but handle any remaining issues
     let decodedContent = content;
@@ -63,6 +64,50 @@ export const TextOutputPanel: React.FC<TextOutputPanelProps> = ({
         '<div class="flex items-start mb-3 p-2 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded"><span class="text-blue-500 mr-3 mt-1 text-lg">•</span><span class="text-gray-800 dark:text-gray-200 leading-relaxed">$1</span></div>'
       );
 
+    // Process diagnostic images from RAG (ADD THIS NEW SECTION)
+    // Update the image processing section:
+
+    // Process diagnostic images from RAG
+    formattedContent = formattedContent.replace(
+      /!\[([^\]]*)\]\(([^)]+)\)/g,
+      (match, alt, imagePath) => {
+        // Encode the full path for the API call
+        let encodedPath;
+        
+        if (imagePath.startsWith('/')) {
+          // Unix path: /home/user/folder/image.png -> api/images/home/user/folder/image.png
+          encodedPath = imagePath.substring(1); // Remove leading slash
+        } else if (imagePath.includes(':\\')) {
+          // Windows path: C:\Users\folder\image.png -> api/images/C/Users/folder/image.png
+          encodedPath = imagePath.replace(':', '').replace(/\\/g, '/');
+        } else {
+          // Relative path
+          encodedPath = imagePath.replace(/\\/g, '/');
+        }
+        
+        const imageUrl = `/api/images/${encodedPath}`;
+        
+        return `<div class="my-6 p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900">
+          <div class="mb-2">
+            <span class="text-sm font-medium text-gray-600 dark:text-gray-400">📄 Diagnostic Image:</span>
+          </div>
+          <img src="${imageUrl}" 
+              alt="${alt}" 
+              class="max-w-full h-auto rounded shadow-md border border-gray-200 dark:border-gray-600"
+              style="display: block; margin: 0 auto;"
+              onerror="this.style.display='none'; this.nextElementSibling.style.display='block'"/>
+          <div style="display:none" class="text-sm text-red-500 p-3 bg-red-50 dark:bg-red-900/20 rounded mt-2 border border-red-200 dark:border-red-700">
+            <div class="flex items-center">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+              </svg>
+              Image not found: ${imagePath}
+            </div>
+          </div>
+        </div>`;
+      }
+    );
+
     // Only process YouTube URLs in content if we don't have structured YouTube videos
     if (!hasStructuredVideos) {
       formattedContent = formattedContent
@@ -75,9 +120,9 @@ export const TextOutputPanel: React.FC<TextOutputPanelProps> = ({
                 <div class="flex items-center space-x-3">
                   <div class="relative flex-shrink-0">
                     <img src="https://img.youtube.com/vi/${videoId}/mqdefault.jpg" 
-                         alt="YouTube Thumbnail" 
-                         class="w-20 h-15 object-cover rounded group-hover:shadow-lg transition-shadow"
-                         onerror="this.src='https://img.youtube.com/vi/default/default.jpg'"/>
+                        alt="YouTube Thumbnail" 
+                        class="w-20 h-15 object-cover rounded group-hover:shadow-lg transition-shadow"
+                        onerror="this.src='https://img.youtube.com/vi/default/default.jpg'"/>
                     <div class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 rounded group-hover:bg-opacity-30 transition-all">
                       <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z"/>
@@ -108,7 +153,7 @@ export const TextOutputPanel: React.FC<TextOutputPanelProps> = ({
       // Process all URLs normally
       formattedContent = formattedContent.replace(
         /(https?:\/\/(?:[-\w.])+(?:\:[0-9]+)?(?:\/(?:[\w\/_.])*)?(?:\?(?:[\w&=%.-])*)?(?:\#(?:[\w.-])*)?)/gi,
-        '<a href="$1" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium break-all"><svg class="w-3 h-3 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>$1</a>'
+        '<a href="$1" target="_blank" rel="noopener noreferrer" class="inline-flex items-center text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline font-medium break-all"><svg class="w-3 h-3 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>$1</a>'
       );
     }
 
