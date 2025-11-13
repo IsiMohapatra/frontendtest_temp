@@ -4,11 +4,14 @@ import path from 'path';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
+    // Await the params since it's a Promise in newer Next.js versions
+    const resolvedParams = await params;
+    
     // Join all path segments
-    const fullPath = params.path.join('/');
+    const fullPath = resolvedParams.path.join('/');
     
     // Handle both absolute and relative paths
     let imagePath;
