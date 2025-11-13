@@ -7,39 +7,42 @@ export async function GET(
   { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    // Await the params since it's a Promise in newer Next.js versions
     const resolvedParams = await params;
     
-    // Join all path segments
-    const fullPath = resolvedParams.path.join('/');
+    // Only allow access to images in the public folder
+    const imagePath = path.join(
+      process.cwd(), 
+      'public', 
+      'diagnostic-images', 
+      ...resolvedParams.path
+    );
     
-    // Handle both absolute and relative paths
-    let imagePath;
-    if (fullPath.startsWith('home/') || fullPath.startsWith('/home/')) {
-      // Unix absolute path
-      imagePath = `/${fullPath}`;
-    } else if (fullPath.includes(':')) {
-      // Windows absolute path (C:/ etc.)
-      imagePath = fullPath.replace(/\//g, '\\');
-    } else {
-      // Relative path - you can set a default base directory
-      imagePath = path.join(process.cwd(), 'public', 'images', fullPath);
+    // Security check: ensure path is within public directory
+    const publicDir = path.join(process.cwd(), 'public');
+    if (!imagePath.startsWith(publicDir)) {
+      return new NextResponse('Forbidden', { status: 403 });
     }
     
-    console.log('Attempting to read image from:', imagePath);
+    console.log('Reading image from:', imagePath);
     const imageBuffer = await readFile(imagePath);
     
-    const ext = path.extname(fullPath).toLowerCase();
+    const ext = path.extname(resolvedParams.path[resolvedParams.path.length - 1]).toLowerCase();
     let contentType = 'image/png';
     
-    if (ext === '.jpg' || ext === '.jpeg') {
-      contentType = 'image/jpeg';
-    } else if (ext === '.png') {
-      contentType = 'image/png';
-    } else if (ext === '.gif') {
-      contentType = 'image/gif';
-    } else if (ext === '.webp') {
-      contentType = 'image/webp';
+    switch (ext) {
+      case '.jpg':
+      case '.jpeg':
+        contentType = 'image/jpeg';
+        break;
+      case '.png':
+        contentType = 'image/png';
+        break;
+      case '.gif':
+        contentType = 'image/gif';
+        break;
+      case '.webp':
+        contentType = 'image/webp';
+        break;
     }
     
     return new NextResponse(imageBuffer, {
